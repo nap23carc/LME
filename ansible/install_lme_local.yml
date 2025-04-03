@@ -377,12 +377,11 @@
       #only fail on a real error
       failed_when: result.rc != 0 and (result.rc == 1 and result.changed == false)
       
-    - name: Set podman secret passwords
+    - name: Check and delete existing podman secrets
       shell: |
-        source /root/.profile 
-        password=$(</dev/urandom tr -dc A-Za-z0-9$@! | head -c30)
-        while ! echo -n $password | grep -Eq '[$@!]+';do password=$(</dev/urandom tr -dc A-Za-z0-9$@! | head -c30); echo $password;done
-        echo -n $password | podman secret create --driver shell --replace "{{ item }}" -
+        if podman secret inspect "{{ item }}" &>/dev/null; then
+          podman secret rm "{{ item }}"
+        fi
       args:
         executable: /bin/bash
       loop: 
@@ -391,8 +390,25 @@
         - wazuh_api
         - wazuh
       become: yes
-      ## only run this when
-      when: result.rc == 1 
+    
+    - name: Set podman secret passwords
+      shell: |
+        source /root/.profile 
+        password=$(</dev/urandom tr -dc A-Za-z0-9$@! | head -c30)
+        while ! echo -n $password | grep -Eq '[$@!]+'; do
+          password=$(</dev/urandom tr -dc A-Za-z0-9$@! | head -c30)
+        done
+        echo -n $password | podman secret create --driver shell "{{ item }}" -
+      args:
+        executable: /bin/bash
+      loop: 
+        - elastic
+        - kibana_system
+        - wazuh_api
+        - wazuh
+      become: yes
+      when: result.rc == 1
+ 
 
 - name: Install Quadlets
   hosts: localhost
