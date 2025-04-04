@@ -398,7 +398,7 @@
         while ! echo -n $password | grep -Eq '[$@!]+'; do
           password=$(</dev/urandom tr -dc A-Za-z0-9$@! | head -c30)
         done
-        echo -n $password | podman secret create --driver shell "{{ item }}" -
+        echo -n $password | podman secret create "{{ item }}" -
       args:
         executable: /bin/bash
       loop: 
@@ -407,8 +407,6 @@
         - wazuh_api
         - wazuh
       become: yes
-      when: result.rc == 1
- 
 
 - name: Install Quadlets
   hosts: localhost
